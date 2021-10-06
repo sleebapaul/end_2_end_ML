@@ -10,11 +10,11 @@ spec:
   - graph:
       children: []
       implementation: MLFLOW_SERVER
-      modelUri: seldon-models/mlflow/model-a
+      modelUri: /Users/sleebapaul/code/end_2_end_ML/seldon-models/mlflow/model-a
       name: wines-classifier
     name: model-a
     replicas: 1
-    traffic: 50
+    traffic: 100
     componentSpecs:
     - spec:
         # We are setting high failureThreshold as installing conda dependencies
@@ -39,35 +39,35 @@ spec:
               path: /health/ping
               port: http
               scheme: HTTP
-  - graph:
-      children: []
-      implementation: MLFLOW_SERVER
-      modelUri: seldon-models/mlflow/model-b
-      name: wines-classifier
-    name: model-b
-    replicas: 1
-    traffic: 50
-    componentSpecs:
-    - spec:
-        # We are setting high failureThreshold as installing conda dependencies
-        # can take long time and we want to avoid k8s killing the container prematurely
-        containers:
-        - name: wines-classifier
-          livenessProbe:
-            initialDelaySeconds: 60
-            failureThreshold: 100
-            periodSeconds: 5
-            successThreshold: 1
-            httpGet:
-              path: /health/ping
-              port: http
-              scheme: HTTP
-          readinessProbe:
-            initialDelaySeconds: 60
-            failureThreshold: 100
-            periodSeconds: 5
-            successThreshold: 1
-            httpGet:
-              path: /health/ping
-              port: http
-              scheme: HTTP
+  # - graph:
+  #     children: []
+  #     implementation: MLFLOW_SERVER
+  #     modelUri: seldon-models/mlflow/model-b
+  #     name: wines-classifier
+  #   name: model-b
+  #   replicas: 1
+  #   traffic: 50
+  #   componentSpecs:
+  #   - spec:
+  #       # We are setting high failureThreshold as installing conda dependencies
+  #       # can take long time and we want to avoid k8s killing the container prematurely
+  #       containers:
+  #       - name: wines-classifier
+  #         livenessProbe:
+  #           initialDelaySeconds: 60
+  #           failureThreshold: 100
+  #           periodSeconds: 5
+  #           successThreshold: 1
+  #           httpGet:
+  #             path: /health/ping
+  #             port: http
+  #             scheme: HTTP
+  #         readinessProbe:
+  #           initialDelaySeconds: 60
+  #           failureThreshold: 100
+  #           periodSeconds: 5
+  #           successThreshold: 1
+  #           httpGet:
+  #             path: /health/ping
+  #             port: http
+  #             scheme: HTTP

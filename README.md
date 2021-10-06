@@ -37,18 +37,29 @@ Seldon, is an MLOps framework, to package, deploy, monitor and manage thousands 
 
 2. Install Seldon Core 
 
-There are some issues going on with latest kubernetes version and Seldon Core. [Follow this thread for the details.](https://github.com/SeldonIO/seldon-core/issues/3618)
+There are some issues going on with latest kubernetes version and Seldon Core. [Follow this thread for the details.](https://github.com/SeldonIO/seldon-core/issues/3618). I used Docker Desktop with used Kubernetes 1.21.5. 
 
-- Install Docker.
-- Install Kubernates `brew install kubectl@1.21.5` (client)
+- Install Docker Desktop.
+- Enable Kubernetes in the settings. 
 - Install Helm `brew install helm` 
-- Install Minikube `brew insatll minikube`
-- Start Minikube `minikube start --kubernetes-version=v1.21.4` (server)
 - Install Seldon Core, Seldon Analytics with Prometheus and Grafana 
-
+- Install Seldon Core and Ambassodor
+    - `kubectl create namespace ambassador || echo "namespace ambassador exists"` 
+    - `helm repo add datawire https://www.getambassador.io`
+    - `helm install ambassador datawire/ambassador --set image.repository=docker.io/datawire/ambassador --set crds.keep=false --namespace ambassador`
     - `kubectl create namespace seldon-system`
     - `helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set usageMetrics.enabled=true --namespace seldon-system`
     - `helm install seldon-core-analytics seldon-core-analytics --namespace seldon-system --repo https://storage.googleapis.com/seldon-charts --set grafana.adminPassword=password --set grafana.adminUser=admin`
+    - `kubectl get deploy -n seldon-system`
+        
+        This should give the following response. 
+
+        ```
+        NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+        seldon-controller-manager   1/1     1            1           93s
+        ```
+- You may check the Ambassodor pods as well using `kubectl get po -n ambassador` 
+
 
 3. Training Flowchart 
 
@@ -68,5 +79,14 @@ cp -r mlruns/0/64f15255a6614f73b71189a906459a10/artifacts/model/* seldon-models/
 
 cp -r mlruns/0/e7a11ef4b6284409a9c65fb6c691e65b/artifacts/model/* seldon-models/mlflow/model-b
 ```
+
+4. Deploy the trained models in the pods 
+
+- `kubectl apply -f ./serving/model-a-b.yaml`
+
+
+Reference 
+
+[1] https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31
 
 

@@ -76,17 +76,24 @@ mkdir seldon-models/mlflow/model-a
 mkdir seldon-models/mlflow/model-b
 
 cp -r mlruns/0/64f15255a6614f73b71189a906459a10/artifacts/model/* seldon-models/mlflow/model-a
-
 cp -r mlruns/0/e7a11ef4b6284409a9c65fb6c691e65b/artifacts/model/* seldon-models/mlflow/model-b
 ```
 
 4. Deploy the trained models in the pods 
 
-- `kubectl apply -f ./serving/model-a-b.yaml`
+-  `kubectl create -f ./serving/model-a-b.yaml` (Imperative, creates a whole new object (previously non-existing / deleted))
+- `kubectl apply -f ./serving/model-a-b.yaml` (Declarative, makes incremental changes to an existing object)
+
+5. Delete the deployment and pods
+
+- `kubectl delete -f ./serving/model-a-b.yaml`
 
 
 Reference 
 
-[1] https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31
+[1] [Alejandro Saucedo's Medium article](https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31)
 
+[2] [Adrian Gonzalez's PPT](https://docs.google.com/presentation/d/1QXiOZkd_XNw6PbUalhYDajljKYQjgKczzNncTyLk9uA/)
+
+[3] [Adrian Gonzalez's Talk](https://www.youtube.com/watch?v=M_q0-8JH0Zw)
 

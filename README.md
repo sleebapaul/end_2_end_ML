@@ -2,7 +2,7 @@
 
 This README depicts a CLI setup guide in Macbook. Things might look different in other platform, but order of setup would be the same. 
 
-1. Setup MLFlow for reproducable experimentation 
+### Setup MLFlow for reproducable experimentation 
 
 - Install `virtualengwrapper` and create new env `mkvirtualenv end_2_end_ml` 
 - Install `mlflow` and `scikit-learn` 
@@ -16,14 +16,14 @@ OR
 
 Just install `MLFLow` and `conda` and run `mlflow run wine_data -P alpha=0.42`
 
-Now we've the models trained, (ignore the performance as of now), these models can be served using MLFlow itself. 
-For this project, I use Seldon.
+Now we've the models trained, (ignore the performance as of now), these models can be served using MLFlow itself. For this project, I use Seldon.
+### Install Seldon Core 
 
 Seldon, is an MLOps framework, to package, deploy, monitor and manage thousands of production ML models 
 
 `SeldonDeployment CRD` makes many things easy by doing an abstraction over the entire inference pipeline. Some important features are,
 
-- There are pre-built servers available for subset of ML frameworks. Eg. `Scikit-Learn`. Here I used `ElasticNet` from `Scikit-Learn`.
+- There are pre-built servers available for subset of ML frameworks. Eg. `Scikit-Learn`.
 
 - A/B Testings, Shadow deployments etc. 
 
@@ -34,8 +34,6 @@ Seldon, is an MLOps framework, to package, deploy, monitor and manage thousands 
 - Seldon Core is a cloud native solution built heavily on Kubernates APIs makes it easy for Seldon to run on any cloud provider. On premise providers are also supported. 
 
 ![Seldon Core Block Diagram](/images/seldon_core.jpeg "seldon core")
-
-2. Install Seldon Core 
 
 There are some issues going on with latest kubernetes version and Seldon Core. [Follow this thread for the details.](https://github.com/SeldonIO/seldon-core/issues/3618). I used Docker Desktop with used Kubernetes 1.21.5. 
 
@@ -61,23 +59,23 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 - You may check the Ambassodor pods as well using `kubectl get po -n ambassador` 
 
 
-3. Training Flowchart 
+### Training and Experimentation 
 
 ![Training Flow Chart](/images/training.png "seldon training")
 
 
-Since I'm setting up everything offline, the model artifacts during various MLflow runs are moved to another folder. This folder path is required to be mentioned in the deployment script. You may give use the same `mlruns` folder path, I doing this additional step just to follow the standard process.
+Since I'm setting up everything offline, MLflow experiment details are stored in a MySQL DB. I use MinIO for simulating the Object Store that stores the artifacts. MLflow will 
+store the artifacts in the MinIO. 
 
-```
-mkdir seldon-models
-mkdir seldon-models/mlflow
-mkdir seldon-models/mlflow
-mkdir seldon-models/mlflow/model-a
-mkdir seldon-models/mlflow/model-b
+In the `experiments` folder, we have a `Dockerfile` which will setup a container that has
 
-cp -r mlruns/0/64f15255a6614f73b71189a906459a10/artifacts/model/* seldon-models/mlflow/model-a
-cp -r mlruns/0/e7a11ef4b6284409a9c65fb6c691e65b/artifacts/model/* seldon-models/mlflow/model-b
-```
+1. Training script 
+2. Training data 
+
+There are provisions to add test scripts, if required. Another aspect is, the training data is added as a file. In a real setup, it won't be the case. The training data could be streaming
+data, or stored in a DB or anything. 
+
+`docker-compose --env-file ./.env up`
 
 4. Deploy the trained models in the pods 
 
@@ -96,4 +94,6 @@ Reference
 [2] [Adrian Gonzalez's PPT](https://docs.google.com/presentation/d/1QXiOZkd_XNw6PbUalhYDajljKYQjgKczzNncTyLk9uA/)
 
 [3] [Adrian Gonzalez's Talk](https://www.youtube.com/watch?v=M_q0-8JH0Zw)
+
+[4] [A Simple MLOps Pipeline on Your Local Machine](https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31)
 

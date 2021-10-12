@@ -5,11 +5,12 @@ This README depicts a CLI setup guide in Macbook. Things might look different in
 ### Setup MLFlow for reproducable experimentation 
 
 - Install `virtualengwrapper` and create new env `mkvirtualenv end_2_end_ml` 
+- `workon end_2_end_ml`
 - Install `mlflow` and `scikit-learn` 
-    - `~/.virtualenvs/end_2_end_ml/bin/pip install mlflow scikit-learn`
+    - `pip install mlflow scikit-learn`
 - Run a couple of experiments with `train.py`
-    - `~/.virtualenvs/end_2_end_ml/bin/python wine_data/train.py 0.5 0.2`
-    - `~/.virtualenvs/end_2_end_ml/bin/python wine_data/train.py`
+    - `python wine_data/train.py 0.5 0.2`
+    - `python wine_data/train.py`
 - Check the dashboard in MLFlow UI using `mlflow ui` command
 
 OR 
@@ -76,6 +77,9 @@ There are provisions to add test scripts, if required. Another aspect is, the tr
 data, or stored in a DB or anything. 
 
 `docker-compose --env-file ./.env up`
+
+`docker-compose down`
+`docker system prune --force --volumes`
 
 4. Deploy the trained models in the pods 
 

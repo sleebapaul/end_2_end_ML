@@ -1,41 +1,61 @@
 version: "3.7"
 
 services:
-  s3:
+  minio:
     image: minio/minio
-    container_name: s3
+    container_name: minio
     ports:
       - 9000:9000
       - 9001:9001
     networks: 
-      - mlflow
+      - mlflow_network
     volumes:
       - ./buckets:/data:consistent
     environment:
-      - "MINIO_ROOT_USER=minio"
-      - "MINIO_ROOT_PASSWORD=minio123"
-    command: server --console-address :9001 /data
+      - MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID}
+      - MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY}
+    command: server /data --console-address ':9001' --address ':9000'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
 
+  mc:
+      image: minio/mc:RELEASE.2020-05-05T06-03-47Z
+      depends_on:
+          - minio
+      container_name: mc
+      networks:
+          - mlflow_network
+      env_file:
+          - .env
+      entrypoint: >
+          /bin/sh -c "
+          while ! nc -z minio 9000; do echo 'Wait minio to startup...' && sleep 0.1; done; sleep 5 &&
+          /usr/bin/mc config host add minio http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
+          /usr/bin/mc rm -r --force minio/mlflow;
+          /usr/bin/mc mb minio/mlflow;
+          /usr/bin/mc policy download minio/mlflow;
+          exit 0;
+          "
+
   db:
+    restart: always
     image: mysql/mysql-server:5.7.28
-    platform: linux/amd64
     container_name: db
     expose:
         - "3306"
     networks: 
-        - mlflow
+        - mlflow_network
+    command: --disable-partition-engine-check
     environment:
         - MYSQL_DATABASE=${MYSQL_DATABASE}
         - MYSQL_USER=${MYSQL_USER}
         - MYSQL_PASSWORD=${MYSQL_PASSWORD}
         - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-    volumes:
-        - ./dbdata:/var/lib/mysql
+    # volumes:
+    #     - ./dbdata:/var/lib/mysql/data
   mlflow:
     restart: always
     build: .
@@ -46,14 +66,14 @@ services:
     ports:
         - "5000:5000"
     networks: 
-        - mlflow
+        - mlflow_network
     environment:
-        - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
-        - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY}
-        - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}
+        - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     command: mlflow server --backend-store-uri mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE} --default-artifact-root s3://mlflow/ --host 0.0.0.0
     depends_on: 
         - db
     
 networks:
-    mlflow:
+    mlflow_network:

@@ -192,3 +192,5 @@ cython_debug/
 
 mlruns/*
 seldon-models/*
+experiments/buckets/*
+experiments/dbdata/*

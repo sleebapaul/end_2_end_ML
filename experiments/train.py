@@ -1,23 +1,16 @@
-import pandas as pd
+import os
+
 import mlflow
 import mlflow.sklearn
-from sklearn.model_selection import train_test_split
+import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
 
-
-import os
-# from mlflow.store.db import utils
-
-# engine = mlflow.store.db.utils.create_sqlalchemy_engine_with_retry(os.environ.get("DB_URL"))
-# utils._initialize_tables(engine)
-
-os.environ['MLFLOW_S3_ENDPOINT_URL'] = "http://s3:9000"
+os.environ['MLFLOW_S3_ENDPOINT_URL'] = "http://localhost:9000"
 os.environ['AWS_ACCESS_KEY_ID'] = "minio"
 os.environ['AWS_SECRET_ACCESS_KEY'] = "minio123"
 
 mlflow.set_tracking_uri("http://localhost:5000")
-mlflow.set_experiment("kyle-test")
-
 df = pd.read_csv("kc_house_data.csv") 
 
 # choose features

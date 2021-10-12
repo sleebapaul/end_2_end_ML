@@ -39,7 +39,6 @@ services:
           /usr/bin/mc policy download minio/mlflow;
           exit 0;
           "
-
   db:
     restart: always
     image: mysql/mysql-server:5.7.28

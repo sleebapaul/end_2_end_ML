@@ -78,15 +78,16 @@ data, or stored in a DB or anything.
 
 `docker-compose --env-file ./.env up`
 
-`docker-compose down`
-`docker system prune --force --volumes`
+To clean slate
+    - `docker-compose down`
+    - `docker system prune --force --volumes`
 
-4. Deploy the trained models in the pods 
+3. Deploy the trained models in the pods 
 
--  `kubectl create -f ./serving/model-a-b.yaml` (Imperative, creates a whole new object (previously non-existing / deleted))
+- `kubectl create -f ./serving/model-a-b.yaml` (Imperative, creates a whole new object (previously non-existing / deleted))
 - `kubectl apply -f ./serving/model-a-b.yaml` (Declarative, makes incremental changes to an existing object)
 
-5. Delete the deployment and pods
+4. Delete the deployment and pods
 
 - `kubectl delete -f ./serving/model-a-b.yaml`
 
@@ -100,4 +101,6 @@ Reference
 [3] [Adrian Gonzalez's Talk](https://www.youtube.com/watch?v=M_q0-8JH0Zw)
 
 [4] [A Simple MLOps Pipeline on Your Local Machine](https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31)
+
+[5] [MLflow On-Premise Deployment - GitHub](https://github.com/sachua/mlflow-docker-compose)
 

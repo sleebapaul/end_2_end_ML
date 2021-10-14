@@ -1,24 +1,50 @@
 # End to End ML Pipeline with MLflow and Seldon Core
 
-This README depicts a CLI setup guide in Macbook. Things might look different in other platform, but order of setup would be the same. 
+This README depicts a CLI setup guide in Macbook (M1). Things might look different in other platform, but order of setup would be the same. 
 
-### Setup MLFlow for reproducable experimentation 
+### Reproducable experimentation 
 
-- Install `virtualengwrapper` and create new env `mkvirtualenv end_2_end_ml` 
-- `workon end_2_end_ml`
-- Install `mlflow` and `scikit-learn` 
-    - `pip install mlflow scikit-learn`
-- Run a couple of experiments with `train.py`
-    - `python wine_data/train.py 0.5 0.2`
-    - `python wine_data/train.py`
-- Check the dashboard in MLFlow UI using `mlflow ui` command
+First and foremost step is setting up a reproducable ML experimentation system. For that we need, 
 
-OR 
+1. An ML experiment tracking system - <font color='green'>MLflow</font>
+2. A database to store the experimentation tracking system data - <font color='green'> MySQL DB</font>
+3. A local object store to keep the artifacts of each experiment -  <font color='green'>MinIO</font>
 
-Just install `MLFLow` and `conda` and run `mlflow run wine_data -P alpha=0.42`
+![Training Flow Chart](/images/mlflow_train.png "seldon training")
 
-Now we've the models trained, (ignore the performance as of now), these models can be served using MLFlow itself. For this project, I use Seldon.
-### Install Seldon Core 
+Here we are setting everything using dockers, so all three above can be actualized as containers. In the `experiments` folder, we have a `Dockerfile` which will setup a container that has
+
+1. Training script 
+2. Training data 
+
+There are provisions to add test scripts, if required. 
+
+Another aspect is, the training data is added as a file. In a real setup, it won't be the case. The training data could be streaming data, or stored in a DB or anything. 
+
+- Install Docker for Desktop
+- Start from clean slate
+    - `docker-compose down`
+    - `docker system prune --force --volumes`
+
+- `docker-compose --env-file ./.env up`
+
+This command should give, 
+
+1. Mlflow dashboard at `localhost:5000` 
+2. MinIO dashboard at `localhost:9000`
+
+Run the training script available in `experiments` folder to simualate the training in MLflow. 
+
+```bash
+cd experiments 
+python3 train.py
+```
+
+You can see the experiments in `localhost:5000`, metrics and the artifacts in `localhost:9000`. This is configured in the `train.py`. If you want to run locally, edit the script.
+
+### Deployment in Kubernates
+
+Once we've the trained models which meets the metric criterias, we can deploy it.
 
 Seldon, is an MLOps framework, to package, deploy, monitor and manage thousands of production ML models 
 
@@ -41,56 +67,70 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 - Install Docker Desktop.
 - Enable Kubernetes in the settings. 
 - Install Helm `brew install helm` 
-- Install Seldon Core, Seldon Analytics with Prometheus and Grafana 
-- Install Seldon Core and Ambassodor
-    - `kubectl create namespace ambassador || echo "namespace ambassador exists"` 
-    - `helm repo add datawire https://www.getambassador.io`
-    - `helm install ambassador datawire/ambassador --set image.repository=docker.io/datawire/ambassador --set crds.keep=false --namespace ambassador`
-    - `kubectl create namespace seldon-system`
-    - `helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set usageMetrics.enabled=true --namespace seldon-system`
-    - `helm install seldon-core-analytics seldon-core-analytics --namespace seldon-system --repo https://storage.googleapis.com/seldon-charts --set grafana.adminPassword=password --set grafana.adminUser=admin`
-    - `kubectl get deploy -n seldon-system`
+- Install Seldon Core, Ambassodor,  Seldon Analytics with Prometheus and Grafana 
+    ```bash 
+    kubectl create namespace ambassador || echo "namespace ambassador exists"
+
+    helm repo add datawire https://www.getambassador.io
+
+    helm install ambassador datawire/ambassador --set image.repository=docker.io/datawire/ambassador --set crds.keep=false --namespace ambassador
+
+    kubectl create namespace seldon-system
+    
+    helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set usageMetrics.enabled=true --namespace seldon-system
+
+    helm install seldon-core-analytics seldon-core-analytics --namespace seldon-system --repo https://storage.googleapis.com/seldon-charts --set grafana.adminPassword=password --set grafana.adminUser=admin
+    ```
+
+- Create deployment 
+    ```bash
+    kubectl get deploy -n seldon-system
+    ```
         
-        This should give the following response. 
+    This should give the following response. 
 
-        ```
-        NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
-        seldon-controller-manager   1/1     1            1           93s
-        ```
-- You may check the Ambassodor pods as well using `kubectl get po -n ambassador` 
+    ```
+    NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+    seldon-controller-manager   1/1     1            1           93s
+    ```
+- You may check the Ambassodor pods as well using `kubectl get po -n ambassador`
 
+- Setup MinIO 
+    ```bash
+    kubectl create ns minio-system
 
-### Training and Experimentation 
+    helm install minio stable/minio --set accessKey=minioadmin \
+    --set secretKey=minioadmin --namespace minio-system
 
-![Training Flow Chart](/images/training.png "seldon training")
+    kubectl rollout status deployment -n minio-system minio
 
+    kubectl port-forward -n minio-system svc/minio 9000:9000
+    ```
+- Configure the MinIO client and copy the models 
 
-Since I'm setting up everything offline, MLflow experiment details are stored in a MySQL DB. I use MinIO for simulating the Object Store that stores the artifacts. MLflow will 
-store the artifacts in the MinIO. 
+    ```bash
+    mc config host add minio-local http://localhost:9000 minioadmin minioadmin
 
-In the `experiments` folder, we have a `Dockerfile` which will setup a container that has
+    mc config host add gcs https://storage.googleapis.com "" ""
 
-1. Training script 
-2. Training data 
+    mc mb minio-local/mlflow
+    mc cp experiments/mlflow/0/<experiment-id>/artifacts/rf-regressor minio-local/mlflow/
+    ```
+- Apply the deployment settings
 
-There are provisions to add test scripts, if required. Another aspect is, the training data is added as a file. In a real setup, it won't be the case. The training data could be streaming
-data, or stored in a DB or anything. 
+    ```bash
+    kubectl apply -f secret.yaml
+    kubectl apply -f deploy.yaml
 
-`docker-compose --env-file ./.env up`
-
-To clean slate
-    - `docker-compose down`
-    - `docker system prune --force --volumes`
-
-3. Deploy the trained models in the pods 
-
-- `kubectl create -f ./serving/model-a-b.yaml` (Imperative, creates a whole new object (previously non-existing / deleted))
-- `kubectl apply -f ./serving/model-a-b.yaml` (Declarative, makes incremental changes to an existing object)
+    kubectl rollout status deploy/$(kubectl get deploy -l seldon-deployment-id=minio-sklearn -o jsonpath='{.items[0].metadata.name}')
+    ```
 
 4. Delete the deployment and pods
 
-- `kubectl delete -f ./serving/model-a-b.yaml`
-
+    ```bash 
+    kubectl delete -f deploy.yaml
+    kubectl delete -f secret.yaml
+    ```
 
 Reference 
 
@@ -103,4 +143,6 @@ Reference
 [4] [A Simple MLOps Pipeline on Your Local Machine](https://towardsdatascience.com/a-simple-mlops-pipeline-on-your-local-machine-db9326addf31)
 
 [5] [MLflow On-Premise Deployment - GitHub](https://github.com/sachua/mlflow-docker-compose)
+
+[6] [SKlearn Prepackaged Server with MinIO](https://docs.seldon.io/projects/seldon-core/en/v1.1.0/examples/minio-sklearn.html)
 

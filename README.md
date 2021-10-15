@@ -81,7 +81,8 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 
     helm install seldon-core-analytics seldon-core-analytics --namespace seldon-system --repo https://storage.googleapis.com/seldon-charts --set grafana.adminPassword=password --set grafana.adminUser=admin
     ```
-
+- Setup the `kubernetes-dashboard` if you would like to, from [here.](https://andrewlock.net/running-kubernetes-and-the-dashboard-with-docker-desktop/)
+    - `http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/`
 - Create deployment 
     ```bash
     kubectl get deploy -n seldon-system
@@ -97,24 +98,34 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 
 - Setup MinIO 
     ```bash
-    kubectl create ns minio-system
-
-    helm install minio stable/minio --set accessKey=minioadmin \
+    kubectl create ns minio-system 
+    
+    helm repo add minio https://helm.min.io/
+    helm install minio minio/minio --set accessKey=minioadmin \
     --set secretKey=minioadmin --namespace minio-system
+    ```
 
-    kubectl rollout status deployment -n minio-system minio
+- Follow the steps in the trace.
+    ```bash
+    kubectl get secret $(kubectl get serviceaccount console-sa --namespace minio-system -o jsonpath="{.secrets[0].name}") --namespace minio-system -o jsonpath="{.data.token}" | base64 --decode
 
-    kubectl port-forward -n minio-system svc/minio 9000:9000
+    kubectl rollout status deployment -n minio-system minio-operator
+    ```
+
+- On another terminal, 
+    ```bash
+
+    export POD_NAME=$(kubectl get pods --namespace minio-system -l "release=minio" -o jsonpath="{.items[0].metadata.name}")
+
+    kubectl port-forward $POD_NAME 9000 --namespace minio-system
     ```
 - Configure the MinIO client and copy the models 
 
     ```bash
     mc config host add minio-local http://localhost:9000 minioadmin minioadmin
 
-    mc config host add gcs https://storage.googleapis.com "" ""
-
     mc mb minio-local/mlflow
-    mc cp experiments/mlflow/0/<experiment-id>/artifacts/rf-regressor minio-local/mlflow/
+    mc cp experiments/buckets/mlflow/0/<experiment-id>/artifacts/rf-regressor minio-local/mlflow/
     ```
 - Apply the deployment settings
 
@@ -130,6 +141,7 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
     ```bash 
     kubectl delete -f deploy.yaml
     kubectl delete -f secret.yaml
+    kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.2.0/aio/deploy/recommended.yaml
     ```
 
 Reference 
@@ -145,4 +157,6 @@ Reference
 [5] [MLflow On-Premise Deployment - GitHub](https://github.com/sachua/mlflow-docker-compose)
 
 [6] [SKlearn Prepackaged Server with MinIO](https://docs.seldon.io/projects/seldon-core/en/v1.1.0/examples/minio-sklearn.html)
+
+[7] [Install MinIO in cluster](https://docs.seldon.io/projects/seldon-core/en/latest/examples/minio_setup.html)
 

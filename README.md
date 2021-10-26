@@ -42,6 +42,8 @@ python3 train.py
 
 You can see the experiments in `localhost:5000`, metrics and the artifacts in `localhost:9000`. This is configured in the `train.py`. If you want to run locally, edit the script.
 
+Note: For the first time, when you `docker-compose up` there could be errors with MLflow and SQL DB. In that case, stop the terminal and rerun the `up` command. Follow the issue at [here](https://github.com/mlflow/mlflow/issues/1761).
+
 ### Deployment in Kubernates
 
 Once we've the trained models which meets the metric criterias, we can deploy it.
@@ -67,14 +69,8 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 - Install Docker Desktop.
 - Enable Kubernetes in the settings. 
 - Install Helm `brew install helm` 
-- Install Seldon Core, Ambassodor,  Seldon Analytics with Prometheus and Grafana 
+- Install Seldon Core with Istio, Seldon Analytics with Prometheus and Grafana 
     ```bash 
-    kubectl create namespace ambassador || echo "namespace ambassador exists"
-
-    helm repo add datawire https://www.getambassador.io
-
-    helm install ambassador datawire/ambassador --set image.repository=docker.io/datawire/ambassador --set crds.keep=false --namespace ambassador
-
     kubectl create namespace seldon-system
     
     helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set usageMetrics.enabled=true --namespace seldon-system
@@ -94,22 +90,16 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
     NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
     seldon-controller-manager   1/1     1            1           93s
     ```
-- You may check the Ambassodor pods as well using `kubectl get po -n ambassador`
 
-- Setup MinIO 
+- Setup MinIO - Make sure you've allotted 6GB memory at Docker Desktop resource.
     ```bash
     kubectl create ns minio-system 
     
     helm repo add minio https://helm.min.io/
     helm install minio minio/minio --set accessKey=minioadmin \
     --set secretKey=minioadmin --namespace minio-system
-    ```
 
-- Follow the steps in the trace.
-    ```bash
-    kubectl get secret $(kubectl get serviceaccount console-sa --namespace minio-system -o jsonpath="{.secrets[0].name}") --namespace minio-system -o jsonpath="{.data.token}" | base64 --decode
-
-    kubectl rollout status deployment -n minio-system minio-operator
+    kubectl describe pods --namespace minio-system
     ```
 
 - On another terminal, 
@@ -119,21 +109,22 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 
     kubectl port-forward $POD_NAME 9000 --namespace minio-system
     ```
-- Configure the MinIO client and copy the models 
+- Configure the MinIO client, create bucket and copy the models 
 
     ```bash
     mc config host add minio-local http://localhost:9000 minioadmin minioadmin
 
-    mc mb minio-local/mlflow
-    mc cp experiments/buckets/mlflow/0/<experiment-id>/artifacts/rf-regressor minio-local/mlflow/
+    mc rb --force minio-local/models
+    mc mb minio-local/models
+    mc cp -r experiments/buckets/mlflow/0/<experiment-id>/artifacts/ minio-local/models/
     ```
-- Apply the deployment settings
+- Apply the deployment settings 
 
     ```bash
-    kubectl apply -f secret.yaml
+    kubectl apply -f seldon-rclone-secret.yaml
     kubectl apply -f deploy.yaml
 
-    kubectl rollout status deploy/$(kubectl get deploy -l seldon-deployment-id=minio-sklearn -o jsonpath='{.items[0].metadata.name}')
+    kubectl rollout status deploy/$(kubectl get deploy -l seldon-deployment-id=minio-local -o jsonpath='{.items[0].metadata.name}')
     ```
 
 4. Delete the deployment and pods
@@ -143,6 +134,20 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
     kubectl delete -f secret.yaml
     kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.2.0/aio/deploy/recommended.yaml
     ```
+
+5. Related 
+
+```bash
+
+kubectl get deployments --all-namespaces
+kubectl delete --all pods --namespace=seldon-system
+kubectl delete --all deployments --namespace=seldon-system
+helm uninstall seldon-core --namespace seldon-system
+
+kubectl get service --all-namespaces
+kubectl get deploy -l seldon-deployment-id=mlflow -o jsonpath='{.items}'
+kubectl logs -n seldon-system -l control-plane=seldon-controller-manager
+```
 
 Reference 
 
@@ -159,4 +164,12 @@ Reference
 [6] [SKlearn Prepackaged Server with MinIO](https://docs.seldon.io/projects/seldon-core/en/v1.1.0/examples/minio-sklearn.html)
 
 [7] [Install MinIO in cluster](https://docs.seldon.io/projects/seldon-core/en/latest/examples/minio_setup.html)
+
+[8] [Seldon Core Setup](https://docs.seldon.io/projects/seldon-core/en/latest/examples/seldon_core_setup.html)
+
+[9] [Install MinIO in cluster](https://docs.seldon.io/projects/seldon-core/en/latest/examples/minio_setup.html)
+
+[10] [MLflow v2 protocol elasticnet wine example](https://docs.seldon.io/projects/seldon-core/en/latest/examples/mlflow_v2_protocol_end_to_end.html)
+
+[11] [KFServing works only with Istio](https://deploy.seldon.io/en/v1.4/contents/architecture/gateways/index.html)
 

@@ -14,8 +14,9 @@ mlflow.set_tracking_uri("http://localhost:5000")
 df = pd.read_csv("kc_house_data.csv") 
 
 # choose features
-features = ["bedrooms","bathrooms","sqft_living","sqft_above","grade",
-            "floors","view",'sqft_lot','floors','waterfront','zipcode'] 
+features = ['bedrooms', 'bathrooms', 'sqft_living',
+            'sqft_lot', 'floors', 'waterfront', 'view', 
+            'condition', 'grade', 'sqft_above', 'sqft_basement']
 
 # getting those features from the dataframe
 x = df[features]

@@ -1,18 +1,16 @@
-apiVersion: machinelearning.seldon.io/v1
+apiVersion: machinelearning.seldon.io/v1alpha2
 kind: SeldonDeployment
 metadata:
-  name: minio-sklearn
+  name: mlflow
 spec:
-  annotations:
-    seldon.io/executor: "true"
-  name: iris
+  protocol: kfserving  # Activate v2 protocol
+  name: wines
   predictors:
-  - componentSpecs:
-    graph:
-      children: []
-      implementation: SKLEARN_SERVER
-      modelUri: s3://mlflow
-      envSecretRefName: seldon-init-container-secret
-      name: classifier
-    name: default
-    replicas: 1
+    - graph:
+        children: []
+        implementation: MLFLOW_SERVER
+        modelUri: s3://models/rf-regressor  # note: s3 points to minio-seldon in the local kind cluster
+        envSecretRefName: seldon-rclone-secret
+        name: classifier
+      name: default
+      replicas: 1

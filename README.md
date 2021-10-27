@@ -71,9 +71,15 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 - Install Helm `brew install helm` 
 - Install Seldon Core with Istio, Seldon Analytics with Prometheus and Grafana 
     ```bash 
+
+    kubectl create namespace seldon
+    kubectl config set-context $(kubectl config current-context) --namespace=seldon
+
     kubectl create namespace seldon-system
     
-    helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set usageMetrics.enabled=true --namespace seldon-system
+    helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set ambassador.enabled=true --set usageMetrics.enabled=true --namespace seldon-system
+
+    kubectl rollout status deploy/seldon-controller-manager -n seldon-system
 
     helm install seldon-core-analytics seldon-core-analytics --namespace seldon-system --repo https://storage.googleapis.com/seldon-charts --set grafana.adminPassword=password --set grafana.adminUser=admin
     ```
@@ -91,7 +97,22 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
     seldon-controller-manager   1/1     1            1           93s
     ```
 
-- Setup MinIO - Make sure you've allotted 6GB memory at Docker Desktop resource.
+- Install Ambassador Ingress (Install just API Gateway inorder to avoid SSL issues in Ambassador Edge Stack)
+    ```bash
+
+    helm repo add datawire https://www.getambassador.io
+    helm repo update
+    helm install ambassador datawire/ambassador \
+    --set image.repository=docker.io/datawire/ambassador \
+    --set crds.keep=false \
+    --set enableAES=false \
+    --namespace seldon-system
+
+    kubectl rollout status deployment.apps/ambassador
+
+    ```
+
+- Setup MinIO - Make sure you've allotted 6-8 GB memory at Docker Desktop resource.
     ```bash
     kubectl create ns minio-system 
     
@@ -117,14 +138,13 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
     mc rb --force minio-local/models
     mc mb minio-local/models
     mc cp -r experiments/buckets/mlflow/0/<experiment-id>/artifacts/ minio-local/models/
+    
     ```
 - Apply the deployment settings 
 
     ```bash
     kubectl apply -f seldon-rclone-secret.yaml
     kubectl apply -f deploy.yaml
-
-    kubectl rollout status deploy/$(kubectl get deploy -l seldon-deployment-id=minio-local -o jsonpath='{.items[0].metadata.name}')
     ```
 
 4. Delete the deployment and pods
@@ -147,6 +167,12 @@ helm uninstall seldon-core --namespace seldon-system
 kubectl get service --all-namespaces
 kubectl get deploy -l seldon-deployment-id=mlflow -o jsonpath='{.items}'
 kubectl logs -n seldon-system -l control-plane=seldon-controller-manager
+
+kubectl get pods --namespace default
+kubectl describe po <POD_NAME> --namespace default
+
+kubectl logs mlflow-default-0-rf-regressor-5c99f87f4-hdlwk -c  rf-regressor-model-initializer
+kubectl logs mlflow-default-0-rf-regressor-5c99f87f4-hdlwk -c  rf-regressor
 ```
 
 Reference 

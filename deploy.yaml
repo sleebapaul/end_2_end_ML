@@ -1,16 +1,45 @@
 apiVersion: machinelearning.seldon.io/v1alpha2
 kind: SeldonDeployment
 metadata:
-  name: mlflow
+  name: rf-regressor
+  namespace: seldon-system
 spec:
-  protocol: kfserving  # Activate v2 protocol
-  name: wines
+  annotations:
+    seldon.io/executor: "false" 
   predictors:
     - graph:
         children: []
         implementation: MLFLOW_SERVER
         modelUri: s3://models/rf-regressor  # note: s3 points to minio-seldon in the local kind cluster
         envSecretRefName: seldon-rclone-secret
-        name: classifier
+        name: rf-regressor
       name: default
       replicas: 1
+      componentSpecs:
+       - spec:
+          containers:
+          - name: rf-regressor
+            livenessProbe:
+              initialDelaySeconds: 150
+              failureThreshold: 10
+              periodSeconds: 50
+              successThreshold: 1
+              tcpSocket:
+                    port: 9000
+              # httpGet:
+              #   path: /health/ping
+              #   port: http
+              #   scheme: HTTP
+              timeoutSeconds: 3
+            readinessProbe:
+              initialDelaySeconds: 150
+              failureThreshold: 10
+              periodSeconds: 50
+              successThreshold: 1
+              tcpSocket:
+                    port: 9000
+              # httpGet:
+              #   path: /health/ping
+              #   port: http
+              #   scheme: HTTP
+              timeoutSeconds: 3

@@ -69,6 +69,13 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 - Install Docker Desktop.
 - Enable Kubernetes in the settings. 
 - Install Helm `brew install helm` 
+- Install `istio`
+    ```bash
+    curl -L https://istio.io/downloadIstio | sh -
+    cd istio-1.11.4
+    export PATH=$PWD/bin:$PATH
+    istioctl install --set profile=minimal -y
+    ```
 - Install Seldon Core with Istio, Seldon Analytics with Prometheus and Grafana 
     ```bash 
 
@@ -77,7 +84,7 @@ There are some issues going on with latest kubernetes version and Seldon Core. [
 
     kubectl create namespace seldon-system
     
-    helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set ambassador.enabled=true --set usageMetrics.enabled=true --namespace seldon-system
+    helm install seldon-core seldon-core-operator --repo https://storage.googleapis.com/seldon-charts --set istio.enabled=true --set istio.gateway="seldon-gateway.istio-system.svc.cluster.local" --set usageMetrics.enabled=true --namespace seldon-system
 
     kubectl rollout status deploy/seldon-controller-manager -n seldon-system
 
@@ -198,4 +205,6 @@ Reference
 [10] [MLflow v2 protocol elasticnet wine example](https://docs.seldon.io/projects/seldon-core/en/latest/examples/mlflow_v2_protocol_end_to_end.html)
 
 [11] [KFServing works only with Istio](https://deploy.seldon.io/en/v1.4/contents/architecture/gateways/index.html)
+
+[12] [Serve MLFlow Elasticnet Wines Model](https://docs.seldon.io/projects/seldon-core/en/latest/examples/server_examples.html#Serve-MLflow-Elasticnet-Wines-Model)
 

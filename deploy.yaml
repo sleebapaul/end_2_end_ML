@@ -1,45 +1,39 @@
 apiVersion: machinelearning.seldon.io/v1alpha2
 kind: SeldonDeployment
 metadata:
-  name: rf-regressor
-  namespace: seldon-system
+  name: mlflow
 spec:
-  annotations:
-    seldon.io/executor: "false" 
+  name: rf-regressor
   predictors:
-    - graph:
-        children: []
-        implementation: MLFLOW_SERVER
-        modelUri: s3://models/rf-regressor  # note: s3 points to minio-seldon in the local kind cluster
-        envSecretRefName: seldon-rclone-secret
-        name: rf-regressor
-      name: default
-      replicas: 1
-      componentSpecs:
-       - spec:
-          containers:
-          - name: rf-regressor
-            livenessProbe:
-              initialDelaySeconds: 150
-              failureThreshold: 10
-              periodSeconds: 50
-              successThreshold: 1
-              tcpSocket:
-                    port: 9000
-              # httpGet:
-              #   path: /health/ping
-              #   port: http
-              #   scheme: HTTP
-              timeoutSeconds: 3
-            readinessProbe:
-              initialDelaySeconds: 150
-              failureThreshold: 10
-              periodSeconds: 50
-              successThreshold: 1
-              tcpSocket:
-                    port: 9000
-              # httpGet:
-              #   path: /health/ping
-              #   port: http
-              #   scheme: HTTP
-              timeoutSeconds: 3
+  - componentSpecs:
+    - spec:
+        # We are setting high failureThreshold as installing conda dependencies
+        # can take long time and we want to avoid k8s killing the container prematurely
+        containers:
+        - name: regressor
+          livenessProbe:
+            initialDelaySeconds: 80
+            failureThreshold: 200
+            periodSeconds: 5
+            successThreshold: 1
+            httpGet:
+              path: /health/ping
+              port: http
+              scheme: HTTP
+          readinessProbe:
+            initialDelaySeconds: 80
+            failureThreshold: 200
+            periodSeconds: 5
+            successThreshold: 1
+            httpGet:
+              path: /health/ping
+              port: http
+              scheme: HTTP
+    graph:
+      children: []
+      implementation: MLFLOW_SERVER
+      modelUri: s3://models/rf-regressor
+      envSecretRefName: seldon-rclone-secret
+      name: regressor
+    name: default
+    replicas: 1

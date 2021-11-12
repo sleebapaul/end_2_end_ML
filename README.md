@@ -208,3 +208,8 @@ Reference
 
 [12] [Serve MLFlow Elasticnet Wines Model](https://docs.seldon.io/projects/seldon-core/en/latest/examples/server_examples.html#Serve-MLflow-Elasticnet-Wines-Model)
 
+Issues 
+
+[1] [Issue in "seldon-container-engine" with MLFLOW_SERVER](https://github.com/SeldonIO/seldon-core/issues/1922)
+
+[2] [Deploying custom MLflow model - stuck at "Readiness probe failed"](https://github.com/SeldonIO/seldon-core/issues/3186)
